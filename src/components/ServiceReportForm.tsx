@@ -2,7 +2,7 @@
 
 import openAIClient from "@/lib/openai";
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import EmployeeSelect from "@/components/EmployeeSelect";
@@ -107,14 +107,21 @@ const serviceReportFormSchema = z.object({
   serviceNotes: z.array(serviceNoteSchema).min(1, "At least one service note is required"),
   emails: z.array(z.string().email("Invalid email address").or(z.literal(""))),
 }).refine((data) => {
-  // Validate that at least one service note has technician time > 0
   return data.serviceNotes.some((note) => {
     const techTime = parseFloat(note.technicianTime) || 0;
     const helperTime = parseFloat(note.helperTime) || 0;
-    return techTime > 0 || helperTime > 0;
+    const techOt = parseFloat(note.technicianOvertime) || 0;
+    const helperOt = parseFloat(note.helperOvertime) || 0;
+    return (
+      techTime > 0 ||
+      helperTime > 0 ||
+      techOt > 0 ||
+      helperOt > 0
+    );
   });
 }, {
-  message: "At least one service note must have technician or helper time greater than 0",
+  message:
+    "Fill in hours for either normal time or overtime in at least one service note.",
   path: ["serviceNotes"],
 });
 
@@ -1151,7 +1158,19 @@ export default function ServiceReportForm({
       </Dialog>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)}>
+        <form
+          onSubmit={form.handleSubmit(handleSubmit, (errors: FieldErrors<ServiceReportFormValues>) => {
+            const sn = errors.serviceNotes as
+              | { message?: string; root?: { message?: string } }
+              | undefined;
+            const msg = sn?.message ?? sn?.root?.message;
+            if (msg) {
+              toast.error(
+                <span className="text-lg md:text-sm">{msg}</span>
+              );
+            }
+          })}
+        >
         <div className="mt-4 flex flex-col gap-6">
           {/* === DocId === */}
           {docId !== null && docId != 0 && (

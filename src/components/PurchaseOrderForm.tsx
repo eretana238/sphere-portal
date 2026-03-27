@@ -507,14 +507,20 @@ export default function PurchaseOrderForm({
         attachments: attachments,
       };
 
-      const res = await fetch("https://api.appliedbas.com/v2/mail/po", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: authorizationHeader,
-        },
-        body: JSON.stringify(message),
-      });
+      let res: Response;
+      try {
+        res = await fetch("https://api.appliedbas.com/v2/mail/po", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: authorizationHeader,
+          },
+          body: JSON.stringify(message),
+        });
+      } catch (fetchError) {
+        console.error("Network error details:", fetchError);
+        throw new Error("Network error: Unable to reach the server. Please check your internet connection and try again.");
+      }
 
       const result = await res.json();
       if (res.status < 200 || res.status >= 300) {

@@ -77,6 +77,7 @@ import {
   ServiceReportMessage,
 } from "@/models/ServiceReport";
 import { getEmployeeByEmail } from "@/services/employeeService";
+import { buildAppliedBasAuthorizationHeader } from "@/lib/services";
 import { PurchaseOrder, purchaseOrderConverter } from "@/models/PurchaseOrder";
 
 interface ServiceReportFormProps {
@@ -791,21 +792,19 @@ export default function ServiceReportForm({
     }
 
     const currentEmployee: Employee = await getEmployeeByEmail(user.email!);
-    // create base64 encoded bearer token
-    const token = btoa(
-      `${currentEmployee.clientId}:${currentEmployee.clientSecret}`
-    );
-
-    if (!token) {
+    let authorizationHeader: string;
+    try {
+      authorizationHeader = buildAppliedBasAuthorizationHeader(currentEmployee);
+    } catch {
       toast.error(
         <span className="text-lg md:text-sm">
-          Error loading employee data. Please try again later.
+          Error loading employee API credentials. Check client-id and client-secret on your
+          employee record, then try again.
         </span>
       );
+      setIsSubmitting(false);
       return;
     }
-
-    const authorizationHeader = `Bearer ${token}`;
     // Now build and send email via API
     const formatDate = (d: Date) => d.toLocaleDateString("en-US");
     const firstDate = data.serviceNotes[0].date;
@@ -990,21 +989,18 @@ export default function ServiceReportForm({
         return;
       }
       const currentEmployee: Employee = await getEmployeeByEmail(user.email!);
-      // create base64 encoded bearer token
-      const token = btoa(
-        `${currentEmployee.clientId}:${currentEmployee.clientSecret}`
-      );
-
-      if (!token) {
+      let authorizationHeader: string;
+      try {
+        authorizationHeader = buildAppliedBasAuthorizationHeader(currentEmployee);
+      } catch {
         toast.error(
           <span className="text-lg md:text-sm">
-            Error loading employee data. Please try again.
+            Error loading employee API credentials. Check client-id and client-secret on your
+            employee record, then try again.
           </span>
         );
         return;
       }
-
-      const authorizationHeader = `Bearer ${token}`;
 
       const formatDate = (d: Date) => d.toLocaleDateString("en-US");
       const formData = getValues();
@@ -1056,32 +1052,71 @@ export default function ServiceReportForm({
         sign_date: null,
       };
 
-      const res = await fetch("https://api.appliedbas.com/v1/pdf/sr", {
+      // Same-origin proxy avoids browser CORS / "Failed to fetch" to api.appliedbas.com
+      const previewUrl = "/api/pdf/sr";
+      const previewBody = JSON.stringify(message);
+      console.log("[Service report PDF preview] request", {
+        method: "POST",
+        url: previewUrl,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authorizationHeader,
+        },
+        body: message,
+      });
+
+      const res = await fetch(previewUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: authorizationHeader,
         },
-        body: JSON.stringify(message),
+        body: previewBody,
       });
 
-      const responseData: { message: string; url: string; code: number } =
-        await res.json();
-      if (!res.ok) {
-        throw new Error(responseData.message || "Error generating PDF");
+      const raw = await res.text();
+      let responseData: { message?: string; url?: string; code?: number };
+      try {
+        responseData = raw ? (JSON.parse(raw) as typeof responseData) : {};
+      } catch {
+        throw new Error(
+          `PDF preview response was not JSON (HTTP ${res.status}). Body: ${raw.slice(0, 200)}`
+        );
       }
-      window.open(responseData.url, "_blank");
+
+      if (!res.ok) {
+        throw new Error(responseData.message || `Error generating PDF (HTTP ${res.status})`);
+      }
+
+      // Some APIs return HTTP 200 with an application-level error in the body.
+      const code = responseData.code;
+      if (
+        typeof code === "number" &&
+        code !== 0 &&
+        code !== 200
+      ) {
+        throw new Error(
+          responseData.message || `PDF API returned code ${code}`
+        );
+      }
+
+      const pdfUrl = responseData.url?.trim();
+      if (!pdfUrl) {
+        throw new Error(
+          responseData.message || "PDF preview response did not include a url."
+        );
+      }
+
+      window.open(pdfUrl, "_blank");
 
       toast.success(
         <span className="text-lg md:text-sm">PDF generated and downloaded</span>
       );
     } catch (error) {
       console.error("Error generating PDF:", error);
-      toast.error(
-        <span className="text-lg md:text-sm">
-          Error generating PDF. Save draft a try again later.
-        </span>
-      );
+      const detail =
+        error instanceof Error ? error.message : "Error generating PDF. Save draft and try again later.";
+      toast.error(<span className="text-lg md:text-sm">{detail}</span>);
     } finally {
       setIsPreviewing(false);
     }

@@ -567,7 +567,7 @@ export default function ProjectReportForm({
         technician_name: authorTechnician.name,
         technician_phone: authorTechnician.phone,
       };
-      const res = await fetch("https://api.appliedbas.com/v1/pdf/pr", {
+      const res = await fetch("/api/pdf/pr", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

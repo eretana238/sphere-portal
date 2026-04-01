@@ -507,24 +507,31 @@ export default function PurchaseOrderForm({
         attachments: attachments,
       };
 
-      let res: Response;
-      try {
-        res = await fetch("https://api.appliedbas.com/v2/mail/po", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: authorizationHeader,
-          },
-          body: JSON.stringify(message),
-        });
-      } catch (fetchError) {
-        console.error("Network error details:", fetchError);
-        throw new Error("Network error: Unable to reach the server. Please check your internet connection and try again.");
+      const res = await fetch("/api/mail/po", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authorizationHeader,
+        },
+        body: JSON.stringify(message),
+      });
+
+      const raw = await res.text();
+      let result: { message?: string } = {};
+      if (raw) {
+        try {
+          result = JSON.parse(raw) as { message?: string };
+        } catch {
+          result = {};
+        }
       }
 
-      const result = await res.json();
       if (res.status < 200 || res.status >= 300) {
-        throw new Error(`Mail API returned status ${res.status} instead of expected 2xx range. ${result.message ? `Response: ${result.message}` : ''}`);
+        throw new Error(
+          `Mail API returned status ${res.status} instead of expected 2xx range. ${
+            result.message ? `Response: ${result.message}` : ""
+          }`
+        );
       }
 
       const orderRef = doc(firestore, "orders", purchaseOrder.id).withConverter(

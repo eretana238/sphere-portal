@@ -478,7 +478,7 @@ export default function ProjectReportForm({
         `${currentEmployee.clientId}:${currentEmployee.clientSecret}`
       );
       const authorizationHeader = `Bearer ${token}`;
-      const res = await fetch("https://api.appliedbas.com/v2/mail/pr", {
+      const res = await fetch("/api/mail/pr", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -486,7 +486,15 @@ export default function ProjectReportForm({
         },
         body: JSON.stringify(message),
       });
-      const result = await res.json();
+      const raw = await res.text();
+      let result: { message?: string } = {};
+      if (raw) {
+        try {
+          result = JSON.parse(raw) as { message?: string };
+        } catch {
+          result = {};
+        }
+      }
       if (res.status < 200 || res.status >= 300) {
         throw new Error(`Mail API returned status ${res.status} instead of expected 2xx range. ${result.message ? `Response: ${result.message}` : ''}`);
       }

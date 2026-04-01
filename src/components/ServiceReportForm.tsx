@@ -863,7 +863,7 @@ export default function ServiceReportForm({
       end_date: formatDate(lastDate),
     };
     try {
-      const res = await fetch("https://api.appliedbas.com/v2/mail/sr", {
+      const res = await fetch("/api/mail/sr", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -871,7 +871,15 @@ export default function ServiceReportForm({
         },
         body: JSON.stringify(message),
       });
-      const responseData = await res.json();
+      const raw = await res.text();
+      let responseData: { message?: string } = {};
+      if (raw) {
+        try {
+          responseData = JSON.parse(raw) as { message?: string };
+        } catch {
+          responseData = {};
+        }
+      }
       if (res.status < 200 || res.status >= 300) {
         throw new Error(`Mail API returned status ${res.status} instead of expected 2xx range. ${responseData.message ? `Response: ${responseData.message}` : ''}`);
       }

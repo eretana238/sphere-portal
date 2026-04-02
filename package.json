@@ -9,7 +9,8 @@
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@algolia/autocomplete-core": "^1.19.2",
@@ -60,6 +61,7 @@
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.1",
+    "@playwright/test": "^1.54.2",
     "@types/jest": "^29.5.11",
     "@types/node": "^20",
     "@types/react": "^19",

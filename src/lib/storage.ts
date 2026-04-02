@@ -11,8 +11,8 @@ export async function listReceiptFiles(folder: string) {
       const url = await getDownloadURL(itemRef);
       const name = itemRef.name;
       // Infer file type from name extension
-      const type = name.split('.').pop() || "unknown";
-      return { name, type, url };
+      const type = name.split(".").pop() || "unknown";
+      return { name, type, url, storagePath: itemRef.fullPath };
     })
   );
 }

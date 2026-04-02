@@ -1,7 +1,14 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FirebaseError } from "firebase/app";
-import { deleteObject, getStorage, ref, uploadBytes } from "firebase/storage";
+import {
+  deleteObject,
+  getDownloadURL,
+  getStorage,
+  ref,
+  uploadBytes,
+} from "firebase/storage";
+import { listReceiptFiles } from "@/lib/storage";
 import {
   PurchaseOrder,
   purchaseOrderConverter,
@@ -129,10 +136,15 @@ type PurchaseOrderFormValues = z.infer<typeof purchaseOrderFormSchema>;
 
 type ReceiptItem = {
   id: string;
-  file: File;
+  /** Local file being uploaded; null when row is loaded from storage only */
+  file: File | null;
+  displayName: string;
+  contentType: string;
   storagePath: string | null;
   uploading: boolean;
   error: string | null;
+  /** Blob URL for local preview and/or Firebase download URL after upload / from bucket */
+  viewUrl: string | null;
 };
 
 function receiptExtension(file: File): string {
@@ -143,6 +155,12 @@ function receiptExtension(file: File): string {
     return file.name.split(".").pop() || "file";
   }
   return "file";
+}
+
+function revokeReceiptViewUrl(url: string | null) {
+  if (url?.startsWith("blob:")) {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function guessMimeFromFileName(name: string): string {
@@ -222,7 +240,8 @@ export default function PurchaseOrderForm({
     );
 
   const uploadReceiptForItem = useCallback(
-    async (itemId: string, file: File) => {
+    async (itemId: string, file: File | null) => {
+      if (!file) return;
       const storage = getStorage();
       const folder = `po-${purchaseOrder.docId!}`;
       const ext = receiptExtension(file);
@@ -235,13 +254,20 @@ export default function PurchaseOrderForm({
             ? file.type
             : guessMimeFromFileName(file.name);
         await uploadBytes(storageRef, file, { contentType });
+        const downloadUrl = await getDownloadURL(storageRef);
         setReceiptItems((prev) => {
           if (!prev.some((i) => i.id === itemId)) return prev;
-          return prev.map((i) =>
-            i.id === itemId
-              ? { ...i, storagePath, uploading: false, error: null }
-              : i
-          );
+          return prev.map((i) => {
+            if (i.id !== itemId) return i;
+            revokeReceiptViewUrl(i.viewUrl);
+            return {
+              ...i,
+              storagePath,
+              uploading: false,
+              error: null,
+              viewUrl: downloadUrl,
+            };
+          });
         });
       } catch (reason) {
         console.error(`Failed to upload file ${file.name}:`, reason);
@@ -267,12 +293,59 @@ export default function PurchaseOrderForm({
 
   useEffect(() => {
     for (const item of receiptItems) {
-      if (!item.uploading || item.storagePath || item.error) continue;
+      if (!item.file || !item.uploading || item.storagePath || item.error)
+        continue;
       if (uploadInitiatedRef.current.has(item.id)) continue;
       uploadInitiatedRef.current.add(item.id);
       void uploadReceiptForItem(item.id, item.file);
     }
   }, [receiptItems, uploadReceiptForItem]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const docId = purchaseOrder.docId;
+    if (docId == null) return;
+
+    (async () => {
+      try {
+        const files = await listReceiptFiles(`po-${docId}`);
+        if (cancelled) return;
+        setReceiptItems((prev) => {
+          const bucketPaths = new Set(files.map((f) => f.storagePath));
+          const bucketItems: ReceiptItem[] = files.map((f) => ({
+            id: `bucket:${f.storagePath}`,
+            file: null,
+            displayName: f.name,
+            contentType: guessMimeFromFileName(f.name),
+            storagePath: f.storagePath,
+            uploading: false,
+            error: null,
+            viewUrl: f.url,
+          }));
+          const locals = prev.filter((i) => {
+            if (i.file === null) return false;
+            if (i.storagePath && bucketPaths.has(i.storagePath)) return false;
+            return true;
+          });
+          return [...bucketItems, ...locals];
+        });
+      } catch (reason) {
+        if (!cancelled) {
+          console.error("Failed to list receipts from storage:", reason);
+          toast.error("Could not load existing receipts from storage.");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [purchaseOrder.docId]);
+
+  const openReceiptView = (item: ReceiptItem) => {
+    if (!item.viewUrl) return;
+    window.open(item.viewUrl, "_blank", "noopener,noreferrer");
+  };
 
   const removeReceiptItem = async (item: ReceiptItem) => {
     if (item.uploading || removingReceiptId === item.id) return;
@@ -295,6 +368,7 @@ export default function PurchaseOrderForm({
       }
       setRemovingReceiptId(null);
     }
+    revokeReceiptViewUrl(item.viewUrl);
     uploadInitiatedRef.current.delete(item.id);
     setReceiptItems((prev) => prev.filter((p) => p.id !== item.id));
   };
@@ -455,14 +529,25 @@ export default function PurchaseOrderForm({
     setReceiptItems((prev) => {
       const uniqueNew = filteredFiles.filter(
         (file) =>
-          !prev.some((p) => p.file.name === file.name && p.file.size === file.size)
+          !prev.some(
+            (p) =>
+              p.file &&
+              p.file.name === file.name &&
+              p.file.size === file.size
+          )
       );
       const toAdd: ReceiptItem[] = uniqueNew.map((file) => ({
         id: crypto.randomUUID(),
         file,
+        displayName: file.name,
+        contentType:
+          file.type && file.type.length > 0
+            ? file.type
+            : guessMimeFromFileName(file.name),
         storagePath: null,
         uploading: true,
         error: null,
+        viewUrl: URL.createObjectURL(file),
       }));
       return [...prev, ...toAdd];
     });
@@ -548,7 +633,7 @@ export default function PurchaseOrderForm({
         technician_phone: technician ? technician.phone : "",
         technician_email: technician ? technician.email : "",
         attachment_storage_paths: paths,
-        attachment_types: receiptItems.map((i) => i.file.type),
+        attachment_types: receiptItems.map((i) => i.contentType),
       };
 
       const res = await fetch("/api/mail/po", {
@@ -846,42 +931,69 @@ export default function PurchaseOrderForm({
           />
           {receiptItems.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
-              {receiptItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-1 bg-muted text-foreground px-3 py-1 rounded-full text-sm shadow border border-border max-w-xs truncate"
-                  title={item.file.name}
-                >
-                  {item.uploading && (
-                    <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" aria-hidden />
-                  )}
-                  <span className="truncate max-w-[120px]">{item.file.name}</span>
-                  {item.error && (
-                    <span className="text-xs text-destructive shrink-0">Failed</span>
-                  )}
-                  {!item.uploading && item.storagePath && (
-                    <span className="text-xs text-muted-foreground shrink-0">Ready</span>
-                  )}
-                  <button
-                    type="button"
-                    className="ml-1 text-muted-foreground hover:text-destructive focus:outline-none disabled:opacity-50"
-                    aria-label={`Remove ${item.file.name}`}
-                    disabled={
-                      item.uploading || removingReceiptId === item.id
-                    }
-                    onClick={() => void removeReceiptItem(item)}
+              {receiptItems.map((item) => {
+                const canOpenView = !!item.viewUrl;
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-1 bg-muted text-foreground rounded-full text-sm shadow border border-border max-w-xs"
                   >
-                    {removingReceiptId === item.id ? (
-                      <Loader2
-                        className="h-3 w-3 shrink-0 animate-spin text-primary"
-                        aria-hidden
-                      />
-                    ) : (
-                      "\u00d7"
-                    )}
-                  </button>
-                </div>
-              ))}
+                    <button
+                      type="button"
+                      className={`flex min-w-0 flex-1 items-center gap-1 truncate rounded-l-full py-1 pl-3 pr-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                        canOpenView
+                          ? "cursor-pointer hover:bg-muted-foreground/10"
+                          : "cursor-default opacity-80"
+                      }`}
+                      title={
+                        canOpenView
+                          ? `View ${item.displayName}`
+                          : item.displayName
+                      }
+                      disabled={!canOpenView}
+                      onClick={() => openReceiptView(item)}
+                    >
+                      {item.uploading && (
+                        <Loader2
+                          className="h-3 w-3 shrink-0 animate-spin text-primary"
+                          aria-hidden
+                        />
+                      )}
+                      <span className="truncate max-w-[120px]">
+                        {item.displayName}
+                      </span>
+                      {item.error && (
+                        <span className="text-xs text-destructive shrink-0">
+                          Failed
+                        </span>
+                      )}
+                      {!item.uploading && item.storagePath && (
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          Ready
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="mr-2 shrink-0 text-muted-foreground hover:text-destructive focus:outline-none disabled:opacity-50"
+                      aria-label={`Remove ${item.displayName}`}
+                      disabled={
+                        item.uploading || removingReceiptId === item.id
+                      }
+                      onClick={() => void removeReceiptItem(item)}
+                    >
+                      {removingReceiptId === item.id ? (
+                        <Loader2
+                          className="h-3 w-3 shrink-0 animate-spin text-primary"
+                          aria-hidden
+                        />
+                      ) : (
+                        "\u00d7"
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
           {receiptItems.some((i) => i.error) && (

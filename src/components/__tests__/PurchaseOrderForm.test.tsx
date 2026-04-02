@@ -36,6 +36,12 @@ jest.mock('firebase/storage', () => ({
   getStorage: jest.fn(),
   ref: jest.fn(),
   uploadBytes: jest.fn(),
+  deleteObject: jest.fn(),
+  getDownloadURL: jest.fn(() => Promise.resolve('https://example.com/file')),
+}))
+
+jest.mock('@/lib/storage', () => ({
+  listReceiptFiles: jest.fn(() => Promise.resolve([])),
 }))
 
 jest.mock('@/services/orderService', () => ({

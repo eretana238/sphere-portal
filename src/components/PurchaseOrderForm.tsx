@@ -35,7 +35,8 @@ import { Vendor, VendorHit } from "@/models/Vendor";
 import { fetchVendorByName } from "@/services/orderService";
 import { Employee, employeeConverter } from "@/models/Employee";
 import { Switch } from "@/components/ui/switch";
-import { getEmployeeByEmail } from "@/lib/services";
+import { buildAppliedBasAuthorizationHeader, getEmployeeByEmail } from "@/lib/services";
+import { submitPurchaseOrderMail } from "@/app/actions/purchaseOrderMail";
 import { useAuth } from "@/contexts/AuthContext";
 import { ServiceReport } from "@/models/ServiceReport";
 import { fetchDraftServiceReports } from "@/services/reportService";
@@ -464,10 +465,6 @@ export default function PurchaseOrderForm({
 
     try {
       const currentEmployee = await getEmployeeByEmail(user.email!);
-      const token = btoa(
-        `${currentEmployee.clientId}:${currentEmployee.clientSecret}`
-      );
-      const authorizationHeader = `Bearer ${token}`;
 
       // Upload receipts and wait for completion
       const uploadPaths: UploadResult[] = await uploadReceipts(selectedFiles);
@@ -507,16 +504,11 @@ export default function PurchaseOrderForm({
         attachments: attachments,
       };
 
-      const res = await fetch("/api/mail/po", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: authorizationHeader,
-        },
-        body: JSON.stringify(message),
-      });
+      // Server Action: browser stays same-origin (no CORS "Failed to fetch"); server POSTs to mail API.
+      const auth = buildAppliedBasAuthorizationHeader(currentEmployee);
+      const mailResult = await submitPurchaseOrderMail(message, auth);
 
-      const raw = await res.text();
+      const raw = mailResult.body;
       let result: { message?: string } = {};
       if (raw) {
         try {
@@ -526,9 +518,9 @@ export default function PurchaseOrderForm({
         }
       }
 
-      if (res.status < 200 || res.status >= 300) {
+      if (mailResult.status < 200 || mailResult.status >= 300) {
         throw new Error(
-          `Mail API returned status ${res.status} instead of expected 2xx range. ${
+          `Mail API returned status ${mailResult.status} instead of expected 2xx range. ${
             result.message ? `Response: ${result.message}` : ""
           }`
         );

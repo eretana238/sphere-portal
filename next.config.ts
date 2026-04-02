@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      // PO payloads include base64 receipts; default limit is too small for some hosts.
+      bodySizeLimit: "32mb",
+    },
+  },
   async rewrites() {
     return [
       {

@@ -40,7 +40,11 @@ export interface PurchaseOrderMessage {
     other: string | null;
     vendor: string;
     amount: number;
-    attachments: Attachment[];
+    /** Legacy inline base64; prefer attachment_storage_paths to avoid request size limits. */
+    attachments?: Attachment[];
+    /** Firebase Storage paths under receipts/po-{purchase_order_num}/ */
+    attachment_storage_paths?: string[];
+    attachment_types?: string[];
 }
 
 export interface Attachment {

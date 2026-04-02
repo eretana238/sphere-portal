@@ -48,11 +48,6 @@ jest.mock('@/services/reportService', () => ({
 
 jest.mock('@/lib/services', () => ({
   getEmployeeByEmail: jest.fn(),
-  buildAppliedBasAuthorizationHeader: jest.fn(() => 'Bearer test'),
-}))
-
-jest.mock('@/app/actions/purchaseOrderMail', () => ({
-  submitPurchaseOrderMail: jest.fn(),
 }))
 
 describe('PurchaseOrderForm', () => {

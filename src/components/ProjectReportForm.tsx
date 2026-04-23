@@ -31,6 +31,7 @@ import {
   onSnapshot,
   query as fsQuery,
   where as fsWhere,
+  updateDoc,
 } from "firebase/firestore";
 import { getEmployeeByEmail } from "@/services/employeeService";
 import { Loader2 } from "lucide-react";
@@ -410,7 +411,7 @@ export default function ProjectReportForm({
           ),
         };
         const ref = await addDoc(
-          collection(firestore, "reports").withConverter(projectReportConverter),
+          collection(firestore, "project reports").withConverter(projectReportConverter),
           newReport
         );
         newReportId = ref.id;
@@ -498,6 +499,19 @@ export default function ProjectReportForm({
       if (res.status < 200 || res.status >= 300) {
         throw new Error(`Mail API returned status ${res.status} instead of expected 2xx range. ${result.message ? `Response: ${result.message}` : ''}`);
       }
+
+      // Guarantee the report is flipped out of draft right after a successful submit.
+      // This is a safety net on top of the draft:false written in the create/update paths
+      // above, so the status always reflects that the report was submitted.
+      if (newReportId) {
+        try {
+          const submittedRef = doc(firestore, "project reports", newReportId);
+          await updateDoc(submittedRef, { draft: false });
+        } catch (flipError) {
+          console.error("Failed to flip draft flag after submit:", flipError);
+        }
+      }
+
       toast.success("Report submitted successfully!");
 
       setSubmittedReportId(newReportId);

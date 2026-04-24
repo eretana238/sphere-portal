@@ -55,4 +55,32 @@ describe("POST /api/mail/po", () => {
     expect(response.status).toBe(202);
     expect(raw).toBe(upstreamBody);
   });
+
+  it("returns 200 without calling upstream when SKIP_MAIL_ON_SUBMIT is true", async () => {
+    const prev = process.env.SKIP_MAIL_ON_SUBMIT;
+    process.env.SKIP_MAIL_ON_SUBMIT = "true";
+    const fetchSpy = jest.spyOn(global, "fetch");
+
+    try {
+      const request = new NextRequest("http://localhost/api/mail/po", {
+        method: "POST",
+        body: JSON.stringify({ purchase_order_num: 123 }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer test-token",
+        },
+      });
+
+      const response = await POST(request);
+      const body = await response.json();
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(response.status).toBe(200);
+      expect(body.skipped).toBe(true);
+      expect(body.message).toContain("skipped");
+    } finally {
+      if (prev === undefined) delete process.env.SKIP_MAIL_ON_SUBMIT;
+      else process.env.SKIP_MAIL_ON_SUBMIT = prev;
+    }
+  });
 });

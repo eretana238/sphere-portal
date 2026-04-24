@@ -1,0 +1,218 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "clients",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "active",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "`client-name`",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "`service-report-doc-id`",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "`doc-id`",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "`doc-id`",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "project reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "`client-name`",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "`created-at`",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "project reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "`project-doc-id`",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "`doc-id`",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "project reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "draft",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "`created-at`",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "project reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "draft",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "`doc-id`",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "project reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "draft",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "`project-doc-id`",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "`doc-id`",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "projects",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "active",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "`doc-id`",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "`client-name`",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "`doc-id`",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "draft",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "`doc-id`",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": []
+}

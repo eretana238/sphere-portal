@@ -20,7 +20,8 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
-import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { firestore } from "@/lib/firebase";
 import { toast } from "sonner";
 
 interface ProjectsTableProps {
@@ -38,9 +39,7 @@ export function ProjectsTable({ projects, setProjects }: ProjectsTableProps) {
     
 
     try {
-      const db = getFirestore();
-      // Assuming project.docId is the project number
-      const projectRef = doc(db, "projects", projectId).withConverter(projectConverter);
+      const projectRef = doc(firestore, "projects", projectId).withConverter(projectConverter);
       const projectSnap = await getDoc(projectRef);
 
       if (projectSnap.exists()) {

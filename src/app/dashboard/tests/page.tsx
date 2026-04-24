@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { getStorage, ref, uploadBytes } from "firebase/storage";
+import { ref, uploadBytes } from "firebase/storage";
+import { storage } from "@/lib/firebase";
 import { PurchaseOrderMessage } from "@/models/PurchaseOrder";
 import type {
   ServiceReportMessage,
@@ -240,7 +241,6 @@ export default function DashboardTestsPage() {
     file: File,
     docId: number
   ) => {
-    const storage = getStorage();
     const folder = `po-${docId}`;
     const ext = receiptExtension(file);
     const fileName = `attachment_${itemId}.${ext}`;

@@ -1,8 +1,8 @@
-import { getStorage, ref, listAll, getDownloadURL } from "firebase/storage";
+import { ref, listAll, getDownloadURL } from "firebase/storage";
+import { storage } from "@/lib/firebase";
 
 // List all files in a receipts folder and return their metadata
 export async function listReceiptFiles(folder: string) {
-  const storage = getStorage();
   const folderRef = ref(storage, `receipts/${folder}`);
   const res = await listAll(folderRef);
   // Get file name and type for each item

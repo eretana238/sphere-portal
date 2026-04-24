@@ -4,7 +4,6 @@ import { FirebaseError } from "firebase/app";
 import {
   deleteObject,
   getDownloadURL,
-  getStorage,
   ref,
   uploadBytes,
 } from "firebase/storage";
@@ -35,7 +34,7 @@ import {
   setDoc,
   where,
 } from "firebase/firestore";
-import { firestore } from "@/lib/firebase";
+import { firestore, storage } from "@/lib/firebase";
 import { toast } from "sonner";
 import VendorSelect from "./VendorSelect";
 import { Vendor, VendorHit } from "@/models/Vendor";
@@ -242,7 +241,6 @@ export default function PurchaseOrderForm({
   const uploadReceiptForItem = useCallback(
     async (itemId: string, file: File | null) => {
       if (!file) return;
-      const storage = getStorage();
       const folder = `po-${purchaseOrder.docId!}`;
       const ext = receiptExtension(file);
       const fileName = `attachment_${itemId}.${ext}`;
@@ -352,7 +350,6 @@ export default function PurchaseOrderForm({
     if (item.storagePath) {
       setRemovingReceiptId(item.id);
       try {
-        const storage = getStorage();
         await deleteObject(ref(storage, item.storagePath));
       } catch (reason) {
         const code =

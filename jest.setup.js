@@ -22,6 +22,7 @@ jest.mock('next/navigation', () => ({
 // Mock Firebase
 jest.mock('@/lib/firebase', () => ({
   firestore: {},
+  storage: {},
 }))
 
 // Mock toast notifications

@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "emulators": "firebase emulators:start --only firestore,auth,storage",
+    "dev:emulators": "concurrently -k -n emulators,next -c blue,green \"npm run emulators\" \"next dev\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -73,6 +75,7 @@
     "jest-environment-jsdom": "^30.3.0",
     "tailwindcss": "^4.1.10",
     "tw-animate-css": "^1.3.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "concurrently": "^9.2.0"
   }
 }
